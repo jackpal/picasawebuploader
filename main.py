@@ -62,6 +62,12 @@ def postPhotoToAlbum(gd_client, photo, album):
   photo = postPhoto(gd_client, album, args.source)
   return photo
 
+def getWebPhotosForAlbum(gd_client, album):
+  photos = gd_client.GetFeed(
+      '/data/feed/api/user/%s/albumid/%s?kind=photo' % (
+          gd_client.email, album.gphoto_id.text))
+  return photos.entry
+  
 allExtensions = {}
 
 # key: extension, value: type
@@ -146,6 +152,49 @@ def compareLocalToWeb(local, web):
       webOnly.append(i)
   return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
+def compareLocalToWebDir(localAlbum, webPhotoDict):
+  localOnly = []
+  both = []
+  webOnly = []
+  for i in localAlbum:
+    if i in webPhotoDict:
+      both.append(i)
+    else:
+      localOnly.append(i)
+  for i in webPhotoDict:
+    if i not in localAlbum:
+      webOnly.append(i)
+  return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
+  
+def syncDirs(gd_client, dirs, local, web):
+  for dir in dirs:
+    syncDir(gd_client, dir, local[dir], web[dir])
+
+def syncDir(gd_client, dir, localAlbum, webAlbum):
+  webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
+  webPhotoDict = {}
+  for photo in webPhotos:
+    title = photo.title.text
+    if title in webPhotoDict:
+      raise "duplicate photo " + title
+    webPhotoDict[title] = photo
+  report = compareLocalToWebDir(localAlbum['files'], webPhotoDict)
+  localOnly = report['localOnly']
+  for f in localOnly:
+    localPath = os.path.join(localAlbum['path'], f)
+    upload(gd_client, localPath, webAlbum, f)
+
+def upload(gd_client, localPath, album, fileName):
+  print "Uploading " + localPath
+  mimeType = getMimeType(fileName)
+  if not mimeType.startswith('image/'):
+    print "skipping non-image " + fileName
+    return None
+  album_url = '/data/feed/api/user/%s/albumid/%s' % (gd_client.email, album.gphoto_id.text)
+  photo = gd_client.InsertPhotoSimple(album_url, fileName, 
+      '', localPath, content_type=mimeType)
+  return photo
+  
 def main():
   args = parseArgs()
   gd_client = login(args.email, args.password)
@@ -153,6 +202,6 @@ def main():
   # postPhotoToAlbum(gd_client, album, args.source)
   localAlbums = toBaseName(findMedia(args.source))
   albumDiff = compareLocalToWeb(localAlbums, webAlbums)
-  print albumDiff
+  syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums)
   
 main()

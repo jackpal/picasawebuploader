@@ -22,12 +22,19 @@ def login(email, password):
   gd_client.ProgrammaticLogin()
   return gd_client
 
-def listAlbums(gd_client):
+def getWebAlbums(gd_client):
   albums = gd_client.GetUserFeed()
+  d = {}
   for album in albums.entry:
-    print 'title: %s, number of photos: %s, id: %s' % (album.title.text,
-        album.numphotos.text, album.gphoto_id.text)
-    print vars(album)
+    title = album.title.text
+    if title in d:
+      print "Duplicate web album:" + title
+    else:
+      d[title] = album
+    # print 'title: %s, number of photos: %s, id: %s' % (album.title.text,
+    #    album.numphotos.text, album.gphoto_id.text)
+    #print vars(album)
+  return d
 
 def findAlbum(gd_client, title):
   albums = gd_client.GetUserFeed()
@@ -113,14 +120,39 @@ def findDupDirs(photos):
       print dc.diff_files
     d[base] = i
   # print [len(photos[i]['files']) for i in photos]
+
+def toBaseName(photos):
+  d = {}
+  for i in photos:
+    base = os.path.basename(i)
+    if base in d:
+      raise "duplicate " + base
+    p = photos[i]
+    p['path'] = i
+    d[base] = p
+  return d
   
+def compareLocalToWeb(local, web):
+  localOnly = []
+  both = []
+  webOnly = []
+  for i in local:
+    if i in web:
+      both.append(i)
+    else:
+      localOnly.append(i)
+  for i in web:
+    if i not in local:
+      webOnly.append(i)
+  return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
+
 def main():
   args = parseArgs()
-  # gd_client = login(args.email, args.password)
-  # listAlbums(gd_client)
+  gd_client = login(args.email, args.password)
+  webAlbums = getWebAlbums(gd_client)
   # postPhotoToAlbum(gd_client, album, args.source)
-  photos = findMedia(args.source)
-  # findDupDirs(photos)
-  print photos
+  localAlbums = toBaseName(findMedia(args.source))
+  albumDiff = compareLocalToWeb(localAlbums, webAlbums)
+  print albumDiff
   
 main()

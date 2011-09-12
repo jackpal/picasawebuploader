@@ -24,3 +24,17 @@ Installation
   + The BSD "sips" image processing program.
      + This comes pre-installed on OSX.
 
+Known Problems
+==============
+
+Picasa Web Albums appears to have an undocumented upload quota system that
+limits uploads to a certain number of bytes per month.
+
+Do a web search for REJECTED_USER_LIMIT to see the various discussions about
+this. From reading the web forums it appears that the upload quota is reset
+occasionally (possibly monthly). If you start getting REJECTED_USER_LIMIT
+errors when you run this script you may have to wait a month to upload new
+pictures.
+
+Some people have reported that paying for yearly web storage will remove the
+upload quota.

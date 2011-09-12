@@ -26,6 +26,7 @@ import tempfile
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
+PICASA_MAX_VIDEO_SIZE_BYTES = 104857600
 
 class VideoEntry(gdata.photos.PhotoEntry):
     pass
@@ -333,6 +334,10 @@ def upload(gd_client, localPath, album, fileName):
     isImage = True
     picasa_photo = gdata.photos.PhotoEntry()
   else:
+    size = os.path.getsize(localPath)
+    if size > PICASA_MAX_VIDEO_SIZE_BYTES:
+      print "Video file too big to upload: " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
+      return
     imagePath = localPath
     isImage = False
     picasa_photo = VideoEntry()

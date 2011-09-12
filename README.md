@@ -13,6 +13,7 @@ To Do:
 + Add Progress UI
 + Deal with duplicate picture and folder names, both on local and web collections.
   + Currently we just throw an exception when we detect duplicate names.
++ Deal with 'Error: 17 REJECTED_USER_LIMIT' errors.
 
 Installation
 

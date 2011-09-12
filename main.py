@@ -245,7 +245,7 @@ def toBaseName(photos):
   for i in photos:
     base = os.path.basename(i)
     if base in d:
-      raise "duplicate " + base
+      raise Exception("duplicate " + base)
     p = photos[i]
     p['path'] = i
     d[base] = p
@@ -289,8 +289,9 @@ def syncDir(gd_client, dir, localAlbum, webAlbum):
   for photo in webPhotos:
     title = photo.title.text
     if title in webPhotoDict:
-      raise "duplicate photo " + title
-    webPhotoDict[title] = photo
+      print "duplicate web photo: " + webAlbum.title.text + " " + title
+    else:
+      webPhotoDict[title] = photo
   report = compareLocalToWebDir(localAlbum['files'], webPhotoDict)
   localOnly = report['localOnly']
   for f in localOnly:

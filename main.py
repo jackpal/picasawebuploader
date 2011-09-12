@@ -151,10 +151,18 @@ def createAlbum(gd_client, title):
   return album
 
 def findOrCreateAlbum(gd_client, title):
-  album = findAlbum(gd_client, title)
-  if not album:
-    album = createAlbum(gd_client, title)
-  return album
+  delay = 1
+  while True:
+    try:
+      album = findAlbum(gd_client, title)
+      if not album:
+        album = createAlbum(gd_client, title)
+      return album
+    except gdata.photos.service.GooglePhotosException, e:
+      print "caught exception " + str(e)
+      print "sleeping for " + str(delay) + " seconds"
+      time.sleep(delay)
+      delay = delay * 2
 
 def postPhoto(gd_client, album, filename):
   album_url = '/data/feed/api/user/%s/albumid/%s' % (gd_client.email, album.gphoto_id.text)
@@ -294,7 +302,7 @@ def uploadDirs(gd_client, dirs, local):
     uploadDir(gd_client, dir, local[dir])
 
 def uploadDir(gd_client, dir, localAlbum):
-  webAlbum = createAlbum(gd_client, dir)
+  webAlbum = findOrCreateAlbum(gd_client, dir)
   for f in localAlbum['files']:
     localPath = os.path.join(localAlbum['path'], f)
     upload(gd_client, localPath, webAlbum, f)

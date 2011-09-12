@@ -4,6 +4,13 @@ A script that uploads photos to Picasa Web Albums
 + Uploads all directories under a given directory
 + restartable
 + Creates the albums as "private" aka "limited"
++ Automatically retries when Google data service errors out.
+
+To Do:
+
++ Allow password to be entered from stdin (rather than passed on command line.)
++ Use multiple threads for uploading.
++ Add Progress UI
 
 Installation
 

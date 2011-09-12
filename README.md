@@ -11,6 +11,8 @@ To Do:
 + Allow password to be entered from stdin (rather than passed on command line.)
 + Use multiple threads for uploading.
 + Add Progress UI
++ Deal with duplicate picture and folder names, both on local and web collections.
+  + Currently we just throw an exception when we detect duplicate names.
 
 Installation
 

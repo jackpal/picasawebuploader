@@ -121,8 +121,7 @@ def protectWebAlbums(gd_client):
         updated_album = gd_client.Put(album, album.GetEditLink().href,
           converter=gdata.photos.AlbumEntryFromString)
       except gdata.service.RequestError, e:
-        print "Could not update album: " + e
-        pass
+        print "Could not update album: " + str(e)
 
 def getWebAlbums(gd_client):
   albums = gd_client.GetUserFeed()
@@ -354,8 +353,8 @@ def upload(gd_client, localPath, album, fileName):
         gd_client.InsertVideo(album, picasa_photo, imagePath, content_type=contentType)
       break
     except gdata.photos.service.GooglePhotosException, e:
-      print "Got exception " + e
-      print "retrying in " + delay + " seconds"
+      print "Got exception " + str(e)
+      print "retrying in " + str(delay) + " seconds"
       time.sleep(delay)
       delay = delay * 2
   

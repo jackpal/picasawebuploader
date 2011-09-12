@@ -22,6 +22,7 @@ import gdata.geo
 import os
 import subprocess
 import tempfile
+import time
 
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 
@@ -119,7 +120,8 @@ def protectWebAlbums(gd_client):
       try:
         updated_album = gd_client.Put(album, album.GetEditLink().href,
           converter=gdata.photos.AlbumEntryFromString)
-      except gdata.service.RequestError:
+      except gdata.service.RequestError, e:
+        print "Could not update album: " + e
         pass
 
 def getWebAlbums(gd_client):
@@ -343,10 +345,20 @@ def upload(gd_client, localPath, album, fileName):
     picasa_photo = VideoEntry()
   picasa_photo.title = atom.Title(text=fileName)
   picasa_photo.summary = atom.Summary(text='', summary_type='text')
-  if isImage:
-    gd_client.InsertPhoto(album, picasa_photo, imagePath, content_type=contentType)
-  else:
-    gd_client.InsertVideo(album, picasa_photo, imagePath, content_type=contentType)
+  delay = 1
+  while True:
+    try:
+      if isImage:
+        gd_client.InsertPhoto(album, picasa_photo, imagePath, content_type=contentType)
+      else:
+        gd_client.InsertVideo(album, picasa_photo, imagePath, content_type=contentType)
+      break
+    except gdata.photos.service.GooglePhotosException, e:
+      print "Got exception " + e
+      print "retrying in " + delay + " seconds"
+      time.sleep(delay)
+      delay = delay * 2
+  
   # delete the temp file that was created if we shrank an image:
   if imagePath != localPath:
     os.remove(imagePath)

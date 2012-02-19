@@ -8,7 +8,6 @@ A script that uploads photos to Picasa Web Albums
 
 To Do:
 
-+ Allow password to be entered from stdin (rather than passed on command line.)
 + Use multiple threads for uploading.
 + Add Progress UI
 + Deal with duplicate picture and folder names, both on local and web collections.
@@ -20,7 +19,7 @@ Installation
 + Prerequesites:
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
-    + gdata-2.0.14 for Python
+    + gdata-2.0.16for Python
   + The BSD "sips" image processing program.
      + This comes pre-installed on OSX.
 

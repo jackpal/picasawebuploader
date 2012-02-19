@@ -11,6 +11,13 @@
 #
 # Contains code from http://nathanvangheem.com/news/moving-to-picasa-update
 
+import sys
+if sys.version_info < (2,7):
+  sys.stderr.write("This script requires Python 2.7 or newer.\n")
+  sys.stderr.write("Current version: " + sys.version + "\n")
+  sys.stderr.flush()
+  sys.exit(1)
+
 import argparse
 import atom
 import atom.service
@@ -19,6 +26,7 @@ import gdata
 import gdata.photos.service
 import gdata.media
 import gdata.geo
+import getpass
 import os
 import subprocess
 import tempfile
@@ -88,7 +96,7 @@ gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 def parseArgs():
   parser = argparse.ArgumentParser(description='Upload pictures to picasa web albums / Google+.')
   parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
-  parser.add_argument('--password', help='the password', required=True)
+  parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
   parser.add_argument('--source', help='the directory to upload', required=True)
 
   args = parser.parse_args()
@@ -245,7 +253,8 @@ def toBaseName(photos):
   for i in photos:
     base = os.path.basename(i)
     if base in d:
-      raise Exception("duplicate " + base)
+      print "duplicate " + base + ":\n" + i + ":\n" + d[base]['path']
+      raise Exception("duplicate base")
     p = photos[i]
     p['path'] = i
     d[base] = p
@@ -373,7 +382,13 @@ def upload(gd_client, localPath, album, fileName):
 
 def main():
   args = parseArgs()
-  gd_client = login(args.email, args.password)
+  email = args.email
+  password = None
+  if 'password' in args:
+    password = args.password
+  else:
+    password = getpass.getpass("Enter password for " + email + ": ")
+  gd_client = login(email, password)
   # protectWebAlbums(gd_client)
   webAlbums = getWebAlbums(gd_client)
   localAlbums = toBaseName(findMedia(args.source))

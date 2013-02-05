@@ -375,7 +375,7 @@ def upload(gd_client, localPath, album, fileName):
       print "retrying in " + str(delay) + " seconds"
       time.sleep(delay)
       delay = delay * 2
-  
+
   # delete the temp file that was created if we shrank an image:
   if imagePath != localPath:
     os.remove(imagePath)
@@ -384,7 +384,7 @@ def main():
   args = parseArgs()
   email = args.email
   password = None
-  if 'password' in args:
+  if 'password' in args and args.password is not None:
     password = args.password
   else:
     password = getpass.getpass("Enter password for " + email + ": ")

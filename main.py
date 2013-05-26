@@ -98,6 +98,10 @@ def parseArgs():
   parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
   parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
   parser.add_argument('--source', help='the directory to upload', required=True)
+  parser.add_argument(
+    '--no-resize',
+    help="Do not resize images, i.e., upload photos with original size.", 
+    action='store_true')
 
   args = parser.parse_args()
   return args
@@ -288,11 +292,11 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
       webOnly.append(i)
   return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
-def syncDirs(gd_client, dirs, local, web):
+def syncDirs(gd_client, dirs, local, web, no_resize):
   for dir in dirs:
-    syncDir(gd_client, dir, local[dir], web[dir])
+    syncDir(gd_client, dir, local[dir], web[dir], no_resize)
 
-def syncDir(gd_client, dir, localAlbum, webAlbum):
+def syncDir(gd_client, dir, localAlbum, webAlbum, no_resize):
   webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
   webPhotoDict = {}
   for photo in webPhotos:
@@ -305,17 +309,17 @@ def syncDir(gd_client, dir, localAlbum, webAlbum):
   localOnly = report['localOnly']
   for f in localOnly:
     localPath = os.path.join(localAlbum['path'], f)
-    upload(gd_client, localPath, webAlbum, f)
+    upload(gd_client, localPath, webAlbum, f, no_resize)
 
-def uploadDirs(gd_client, dirs, local):
+def uploadDirs(gd_client, dirs, local, no_resize):
   for dir in dirs:
-    uploadDir(gd_client, dir, local[dir])
+    uploadDir(gd_client, dir, local[dir], no_resize)
 
-def uploadDir(gd_client, dir, localAlbum):
+def uploadDir(gd_client, dir, localAlbum, no_resize):
   webAlbum = findOrCreateAlbum(gd_client, dir)
   for f in localAlbum['files']:
     localPath = os.path.join(localAlbum['path'], f)
-    upload(gd_client, localPath, webAlbum, f)
+    upload(gd_client, localPath, webAlbum, f, no_resize)
 
 # Global used for a temp directory
 gTempDir = ''
@@ -345,15 +349,23 @@ def shrinkIfNeeded(path, maxDimension):
     return imagePath
   return path
 
-def upload(gd_client, localPath, album, fileName):
+def upload(gd_client, localPath, album, fileName, no_resize):
   print "Uploading " + localPath
   contentType = getContentType(fileName)
+
   if contentType.startswith('image/'):
-    imagePath = shrinkIfNeeded(localPath, PICASA_MAX_FREE_IMAGE_DIMENSION)
+    if no_resize:
+      imagePath = localPath
+    else:
+      imagePath = shrinkIfNeeded(localPath, PICASA_MAX_FREE_IMAGE_DIMENSION)
+
     isImage = True
     picasa_photo = gdata.photos.PhotoEntry()
   else:
     size = os.path.getsize(localPath)
+
+    # tested by cpbotha on 2013-05-24
+    # this limit still exists
     if size > PICASA_MAX_VIDEO_SIZE_BYTES:
       print "Video file too big to upload: " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
       return
@@ -382,6 +394,13 @@ def upload(gd_client, localPath, album, fileName):
 
 def main():
   args = parseArgs()
+
+  if args.no_resize:
+    print "*** Images will be uploaded at original size."
+
+  else:
+    print "*** Images will be resized to 2048 pixels."
+
   email = args.email
   password = None
   if 'password' in args and args.password is not None:
@@ -393,7 +412,7 @@ def main():
   webAlbums = getWebAlbums(gd_client)
   localAlbums = toBaseName(findMedia(args.source))
   albumDiff = compareLocalToWeb(localAlbums, webAlbums)
-  syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums)
-  uploadDirs(gd_client, albumDiff['localOnly'], localAlbums)
+  syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums, args.no_resize)
+  uploadDirs(gd_client, albumDiff['localOnly'], localAlbums, args.no_resize)
 
 main()

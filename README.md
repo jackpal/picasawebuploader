@@ -7,7 +7,7 @@ A script that uploads photos to Picasa Web Albums
 + Automatically retries when Google data service errors out.
 
 Attention: This script is obsolete for Windows and Mac
-======================================================
+------------------------------------------------------
 
 It looks like Google Picassa for Windows and Mac now comes with a back up tool that performs the same functionality as
 this script. If you are using a Windows or Macintosh system, you probably should look into using the official Google
@@ -17,7 +17,8 @@ For more details, read this unofficial blog post describing the
 [Google+ Auto Backup for Desktop](http://googlesystem.blogspot.com/2013/12/google-auto-backup-for-desktop.html) tool.
 
 
-To Do:
+To Do
+-----
 
 + Use multiple threads for uploading.
 + Add Progress UI
@@ -26,6 +27,7 @@ To Do:
 + Deal with 'Error: 17 REJECTED_USER_LIMIT' errors.
 
 Installation
+------------
 
 + Prerequesites:
   + Python 2.7
@@ -35,7 +37,7 @@ Installation
      + This comes pre-installed on OSX.
 
 Known Problems
-==============
+--------------
 
 Picasa Web Albums appears to have an undocumented upload quota system that
 limits uploads to a certain number of bytes per month.

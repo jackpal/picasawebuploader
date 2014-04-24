@@ -37,6 +37,12 @@ from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTE
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 PICASA_MAX_VIDEO_SIZE_BYTES = 104857600
 
+try:
+  from PIL import Image
+  HAS_PIL_IMAGE = True
+except:
+  HAS_PIL_IMAGE = False
+
 class VideoEntry(gdata.photos.PhotoEntry):
     pass
 
@@ -333,6 +339,8 @@ def getTempPath(localPath):
   return tempPath
 
 def imageMaxDimension(path):
+  if (HAS_PIL_IMAGE):
+    return imageMaxDimensionByPIL(path)
   output = subprocess.check_output(['sips', '-g', 'pixelWidth', '-g', 'pixelHeight',
     path])
   lines = output.split('\n')
@@ -340,12 +348,33 @@ def imageMaxDimension(path):
   h = int(lines[2].split()[1])
   return max(w,h)
 
+def imageMaxDimensionByPIL(path):
+  img = Image.open(path)
+  (w,h) = img.size
+  return max(w,h)
+
 def shrinkIfNeeded(path, maxDimension):
+  if (HAS_PIL_IMAGE):
+    return shrinkIfNeededByPIL(path, maxDimension)
   if imageMaxDimension(path) > maxDimension:
     print "Shrinking " + path
     imagePath = getTempPath(path)
     subprocess.check_call(['sips', '--resampleHeightWidthMax', str(maxDimension), path,
       '--out', imagePath])
+    return imagePath
+  return path
+
+def shrinkIfNeededByPIL(path, maxDimension):
+  if imageMaxDimensionByPIL(path) > maxDimension:
+    print "Shrinking " + path
+    imagePath = getTempPath(path)
+    img = Image.open(path);
+    (w,h) = img.size
+    if (w>h):
+      img2 = img.resize((maxDimension, (h*maxDimension)/w), Image.ANTIALIAS)
+    else:
+      img2 = img.resize(((w*maxDimension)/h, maxDimension), Image.ANTIALIAS)
+    img2.save(imagePath, 'JPEG', quality=99)
     return imagePath
   return path
 

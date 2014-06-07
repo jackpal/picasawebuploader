@@ -240,7 +240,7 @@ def visit(arg, dirname, names):
     os.path.isfile(os.path.join(dirname, name))]
   count = len(mediaFiles)
   if count > 0:
-    arg[dirname] = {'files': mediaFiles}
+    arg[dirname] = {'files': sorted(mediaFiles)}
 
 def findMedia(source):
   hash = {}

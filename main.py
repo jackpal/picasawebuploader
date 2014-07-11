@@ -99,19 +99,6 @@ def InsertVideo(self, album_or_uri, video, filename_or_handle, content_type='ima
 
 gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
-def parseArgs():
-    parser = argparse.ArgumentParser(description='Upload pictures to picasa web albums / Google+.')
-    parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
-    parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
-    parser.add_argument('--source', help='the directory to upload', required=True)
-    parser.add_argument(
-          '--no-resize',
-          help="Do not resize images, i.e., upload photos with original size.",
-          action='store_true')
-
-    args = parser.parse_args()
-    return args
-
 def login(email, password):
     gd_client = gdata.photos.service.PhotosService()
     gd_client.email = email
@@ -421,8 +408,17 @@ def upload(gd_client, localPath, album, fileName, no_resize):
     if imagePath != localPath:
         os.remove(imagePath)
 
-def main():
-    args = parseArgs()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Upload pictures to picasa web albums / Google+.')
+    parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
+    parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
+    parser.add_argument('--source', help='the directory to upload', required=True)
+    parser.add_argument(
+          '--no-resize',
+          help="Do not resize images, i.e., upload photos with original size.",
+          action='store_true')
+
+    args = parser.parse_args()
 
     if args.no_resize:
         print "*** Images will be uploaded at original size."
@@ -443,5 +439,3 @@ def main():
     albumDiff = compareLocalToWeb(localAlbums, webAlbums)
     syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums, args.no_resize)
     uploadDirs(gd_client, albumDiff['localOnly'], localAlbums, args.no_resize)
-
-main()

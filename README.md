@@ -1,4 +1,7 @@
-A script that uploads photos to Picasa Web Albums
+picasawebuploader
+=================
+
+A script that uploads photos to Google+ / Picasa Web Albums
 
 + Resizes large images to be less than the free limit (2048 x 2048)
 + Uploads all directories under a given directory
@@ -9,8 +12,9 @@ A script that uploads photos to Picasa Web Albums
 Attention: This script is obsolete for Windows and Mac
 ------------------------------------------------------
 
-It looks like Google Picassa for Windows and Mac now comes with a back up tool that performs the same functionality as
-this script. If you are using a Windows or Macintosh system, you probably should look into using the official Google
+It looks like Google Picasa for Windows and Mac now comes with a back up tool
+that performs the same functionality as this script. If you are using a Windows
+or Macintosh system, you probably should look into using the official Google
 tool instead. See [Picasa](http://picasa.google.com/).
 
 For more details, read this unofficial blog post describing the
@@ -29,12 +33,14 @@ To Do
 Installation
 ------------
 
-+ Prerequesites:
++ Prerequisites:
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
-    + gdata-2.0.16for Python
-  + The BSD "sips" image processing program.
-     + This comes pre-installed on OSX.
+    + gdata-2.0.16 for Python
+  + The PIL library for Python or BSD "sips" image processing program.
+	+ PIL is available on most UNIX like systems.
+    + "sips" comes pre-installed on OSX.
+  + pyexiv2 module for writing correct EXIF data
 
 Known Problems
 --------------
@@ -50,4 +56,3 @@ pictures.
 
 Some people have reported that paying for yearly web storage will remove the
 upload quota.
-

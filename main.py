@@ -28,6 +28,7 @@ import gdata.media
 import gdata.geo
 import getpass
 import os
+import pyexiv2
 import subprocess
 import tempfile
 import time
@@ -355,13 +356,25 @@ def shrinkIfNeededByPIL(path, maxDimension):
     if imageMaxDimensionByPIL(path) > maxDimension:
         print "Shrinking " + path
         imagePath = getTempPath(path)
-        img = Image.open(path);
+        img = Image.open(path)
         (w,h) = img.size
         if (w>h):
             img2 = img.resize((maxDimension, (h*maxDimension)/w), Image.ANTIALIAS)
         else:
             img2 = img.resize(((w*maxDimension)/h, maxDimension), Image.ANTIALIAS)
         img2.save(imagePath, 'JPEG', quality=99)
+
+        # now copy EXIF data from original to new
+        src_image = pyexiv2.ImageMetadata(path)
+        src_image.read()
+        dst_image = pyexiv2.ImageMetadata(imagePath)
+        dst_image.read()
+        src_image.copy(dst_image, exif=True)
+        # overwrite image size based on new image
+        dst_image["Exif.Photo.PixelXDimension"] = img2.size[0]
+        dst_image["Exif.Photo.PixelYDimension"] = img2.size[1]
+        dst_image.write()
+
         return imagePath
     return path
 
@@ -432,6 +445,7 @@ if __name__ == '__main__':
         password = args.password
     else:
         password = getpass.getpass("Enter password for " + email + ": ")
+
     gd_client = login(email, password)
     # protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)

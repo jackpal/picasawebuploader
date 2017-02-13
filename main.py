@@ -27,16 +27,28 @@ import gdata.photos.service
 import gdata.media
 import gdata.geo
 import getpass
+import httplib2
 import os
-import pyexiv2
 import subprocess
 import tempfile
 import time
 
+from apiclient.discovery import build
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
+from oauth2client.file import Storage
+from oauth2client.client import OAuth2WebServerFlow
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
 PICASA_MAX_VIDEO_SIZE_BYTES = 104857600
+
+OAUTH_SCOPE = 'https://picasaweb.google.com/data/'
+
+# Redirect URI for installed apps
+REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
+
+# Copy your credentials from the console
+CLIENT_ID = '' #TODO: fill in
+CLIENT_SECRET = '' #TODO: fill in
 
 try:
     from PIL import Image
@@ -100,12 +112,38 @@ def InsertVideo(self, album_or_uri, video, filename_or_handle, content_type='ima
 
 gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
-def login(email, password):
+
+def auth(storage):
+    # Run through the OAuth flow and retrieve credentials
+    flow = OAuth2WebServerFlow(CLIENT_ID, CLIENT_SECRET, OAUTH_SCOPE, redirect_uri=REDIRECT_URI)
+    authorize_url = flow.step1_get_authorize_url()
+    print 'Go to the following link in your browser: ' + authorize_url
+    code = raw_input('Enter verification code: ').strip()
+    credentials = flow.step2_exchange(code)
+    storage.put(credentials)
+    return credentials
+
+def login(credentials_file, email):
+    storage = Storage(credentials_file)
+
+    try:
+        credentials = storage.get()
+    except:
+        #Probably file could not be found, so redo auth:
+        credentials = auth(storage)
+    if credentials == None:
+        #Probably file could not be found, so redo auth:
+        credentials = auth(storage)
+
+    # Create an httplib2.Http object and authorize it with our credentials
+    http = httplib2.Http()
+    http = credentials.authorize(http)
+
     gd_client = gdata.photos.service.PhotosService()
     gd_client.email = email
-    gd_client.password = password
     gd_client.source = 'palevich-photouploader'
-    gd_client.ProgrammaticLogin()
+    gd_client.additional_headers = {'Authorization' : 'Bearer %s' % credentials.access_token}
+    drive_service = build('drive', 'v2', http=http)
     return gd_client
 
 def protectWebAlbums(gd_client):
@@ -199,7 +237,16 @@ knownExtensions = {
     '.3gp': 'video/3gp',
     '.m4v': 'video/m4v',
     '.mp4': 'video/mp4',
-    '.mov': 'video/mov'
+    '.mov': 'video/mov',
+    '.PNG': 'image/png',
+    '.JPEG': 'image/jpeg',
+    '.JPG': 'image/jpeg',
+    '.AVI': 'video/avi',
+    '.WMV': 'video/wmv',
+    '.3GP': 'video/3gp',
+    '.M4V': 'video/m4v',
+    '.MP4': 'video/mp4',
+    '.MOV': 'video/mov'
     }
 
 def getContentType(filename):
@@ -363,18 +410,6 @@ def shrinkIfNeededByPIL(path, maxDimension):
         else:
             img2 = img.resize(((w*maxDimension)/h, maxDimension), Image.ANTIALIAS)
         img2.save(imagePath, 'JPEG', quality=99)
-
-        # now copy EXIF data from original to new
-        src_image = pyexiv2.ImageMetadata(path)
-        src_image.read()
-        dst_image = pyexiv2.ImageMetadata(imagePath)
-        dst_image.read()
-        src_image.copy(dst_image, exif=True)
-        # overwrite image size based on new image
-        dst_image["Exif.Photo.PixelXDimension"] = img2.size[0]
-        dst_image["Exif.Photo.PixelYDimension"] = img2.size[1]
-        dst_image.write()
-
         return imagePath
     return path
 
@@ -396,7 +431,7 @@ def upload(gd_client, localPath, album, fileName, no_resize):
         # tested by cpbotha on 2013-05-24
         # this limit still exists
         if size > PICASA_MAX_VIDEO_SIZE_BYTES:
-            print "Video file too big to upload: " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
+            print "## Video file too big to upload: " + str(fileName) + " : " + str(size) + " > " + str(PICASA_MAX_VIDEO_SIZE_BYTES)
             return
         imagePath = localPath
         isImage = False
@@ -424,7 +459,8 @@ def upload(gd_client, localPath, album, fileName, no_resize):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload pictures to picasa web albums / Google+.')
     parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
-    parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
+    #parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
+    parser.add_argument('--credentials_file', help='the credentials file for oauth', required=True)
     parser.add_argument('--source', help='the directory to upload', required=True)
     parser.add_argument(
           '--no-resize',
@@ -432,6 +468,7 @@ if __name__ == '__main__':
           action='store_true')
 
     args = parser.parse_args()
+    credentials_file = args.credentials_file
 
     if args.no_resize:
         print "*** Images will be uploaded at original size."
@@ -440,13 +477,12 @@ if __name__ == '__main__':
         print "*** Images will be resized to 2048 pixels."
 
     email = args.email
-    password = None
-    if 'password' in args and args.password is not None:
-        password = args.password
-    else:
-        password = getpass.getpass("Enter password for " + email + ": ")
-
-    gd_client = login(email, password)
+    #password = None
+    #if 'password' in args and args.password is not None:
+    #	password = args.password
+    #else:
+    #	password = getpass.getpass("Enter password for " + email + ": ")
+    gd_client = login(credentials_file, email)
     # protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)
     localAlbums = toBaseName(findMedia(args.source))

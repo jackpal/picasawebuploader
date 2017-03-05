@@ -1,6 +1,6 @@
 #! /usr/bin/python
 #
-# Upload directories of videos and pictures to Picasa Web Albums
+# Upload directories of videos and pictures to Google Photos
 #
 # Requires:
 #   Python 2.7
@@ -8,6 +8,8 @@
 #   sips command-line image processing tools.
 #
 # Copyright (C) 2011 Jack Palevich, All Rights Reserved
+# For modifications:
+# Copyright (C) 2017 pjv, All Rights Reserved
 #
 # Contains code from http://nathanvangheem.com/news/moving-to-picasa-update
 
@@ -33,7 +35,7 @@ import subprocess
 import tempfile
 import time
 
-from apiclient.discovery import build
+from datetime import datetime, timedelta
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
@@ -121,7 +123,10 @@ def auth(storage):
     code = raw_input('Enter verification code: ').strip()
     credentials = flow.step2_exchange(code)
     storage.put(credentials)
+
     return credentials
+
+cached_credentials = None
 
 def login(credentials_file, email):
     storage = Storage(credentials_file)
@@ -131,7 +136,7 @@ def login(credentials_file, email):
     except:
         #Probably file could not be found, so redo auth:
         credentials = auth(storage)
-    if credentials == None:
+    if credentials is None or credentials.invalid:
         #Probably file could not be found, so redo auth:
         credentials = auth(storage)
 
@@ -139,11 +144,30 @@ def login(credentials_file, email):
     http = httplib2.Http()
     http = credentials.authorize(http)
 
+    if (credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5):
+        credentials.refresh(http)
+
+    global cached_credentials
+    cached_credentials = credentials
+
     gd_client = gdata.photos.service.PhotosService()
     gd_client.email = email
     gd_client.source = 'palevich-photouploader'
     gd_client.additional_headers = {'Authorization' : 'Bearer %s' % credentials.access_token}
-    drive_service = build('drive', 'v2', http=http)
+    return gd_client
+
+def refresh(gd_client):
+    global cached_credentials
+
+    # Create an httplib2.Http object and authorize it with our credentials
+    http = httplib2.Http()
+    http = cached_credentials.authorize(http)
+
+    if (cached_credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5):
+        cached_credentials.refresh(http)
+        print "Refreshed"
+
+    gd_client.additional_headers = {'Authorization' : 'Bearer %s' % cached_credentials.access_token}
     return gd_client
 
 def protectWebAlbums(gd_client):
@@ -191,7 +215,13 @@ def findAlbum(gd_client, title):
 def createAlbum(gd_client, title):
     print "Creating album " + title
     # public, private, protected. private == "anyone with link"
-    album = gd_client.InsertAlbum(title=title, summary='', access='private')
+    album = None
+    try:
+        album = gd_client.InsertAlbum(title=title, summary='', access='private')
+    except gdata.photos.service.GooglePhotosException, e:
+        if e.message == "(501) Insert is no longer supported -- Not Implemented":
+            print "Please create all albums manually in Google Photos. The new API version no longer supports creating albums."
+        raise e
     return album
 
 def findOrCreateAlbum(gd_client, title):
@@ -264,11 +294,13 @@ def accumulateSeenExtensions(filename):
         allExtensions[ext] = 1
 
 def isMediaFilename(filename):
+    #print 'filename: '+str(filename)
     accumulateSeenExtensions(filename)
     return getContentType(filename) != None
 
 def visit(arg, dirname, names):
     basedirname = os.path.basename(dirname)
+    #print 'basedirname '+str(basedirname)
     if basedirname.startswith('.'):
         return
     mediaFiles = [name for name in names if not name.startswith('.') and isMediaFilename(name) and
@@ -278,6 +310,7 @@ def visit(arg, dirname, names):
         arg[dirname] = {'files': sorted(mediaFiles)}
 
 def findMedia(source):
+    #print 'findMedia '+str(source)
     hash = {}
     os.path.walk(source, visit, hash)
     return hash
@@ -403,7 +436,7 @@ def shrinkIfNeededByPIL(path, maxDimension):
     if imageMaxDimensionByPIL(path) > maxDimension:
         print "Shrinking " + path
         imagePath = getTempPath(path)
-        img = Image.open(path)
+        img = Image.open(path);
         (w,h) = img.size
         if (w>h):
             img2 = img.resize((maxDimension, (h*maxDimension)/w), Image.ANTIALIAS)
@@ -446,11 +479,15 @@ def upload(gd_client, localPath, album, fileName, no_resize):
             else:
                 gd_client.InsertVideo(album, picasa_photo, imagePath, content_type=contentType)
             break
-        except gdata.photos.service.GooglePhotosException, e:
-          print "Got exception " + str(e)
-          print "retrying in " + str(delay) + " seconds"
-          time.sleep(delay)
-          delay = delay * 2
+        except gdata.photos.service.GooglePhotosException, e:	
+          if e.args[0] == 403:
+            print "Refreshing token"
+            gd_client = refresh(gd_client)
+          else:
+            print "Got exception " + str(e)
+            print "retrying in " + str(delay) + " seconds"
+            time.sleep(delay)
+            delay = delay * 2
 
     # delete the temp file that was created if we shrank an image:
     if imagePath != localPath:
@@ -485,7 +522,9 @@ if __name__ == '__main__':
     gd_client = login(credentials_file, email)
     # protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)
+    #print 'webAlbums=' + str(webAlbums)
     localAlbums = toBaseName(findMedia(args.source))
+    #print 'localAlbums=' + str(localAlbums)
     albumDiff = compareLocalToWeb(localAlbums, webAlbums)
     syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums, args.no_resize)
     uploadDirs(gd_client, albumDiff['localOnly'], localAlbums, args.no_resize)
